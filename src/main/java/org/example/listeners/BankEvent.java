@@ -326,20 +326,19 @@ public class BankEvent extends ListenerAdapter {
                     
                     // Give 50% to two specific owners
                     long ownerID1 = 942818122681974804L;
-                    int ownerShare1 = price / 2;
+                    int ownerShare = price / 2;
                     int ownerBalance1 = JsonStorage.getBalance(ownerID1);
                     int ownerRank1 = JsonStorage.getRank(ownerID1);
-                    JsonStorage.saveUser(ownerID1, ownerBalance1 + ownerShare1, ownerRank1);
+                    JsonStorage.saveUser(ownerID1, ownerBalance1 + ownerShare, ownerRank1);
 
                     // Rank up owner1 if needed
                     Member owner1 = event.getGuild().getMemberById(ownerID1);
                     if (owner1 != null) checkRankUp(owner1, event);
                     
                     long ownerID2 = 1396926205881483354L;
-                    int ownerShare2 = price / 2;
                     int ownerBalance2 = JsonStorage.getBalance(ownerID2);
                     int ownerRank2 = JsonStorage.getRank(ownerID2);
-                    JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare2, ownerRank2);
+                    JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare, ownerRank2);
                     
                     // Rank up owner2 if needed
                     Member owner2 = event.getGuild().getMemberById(ownerID2);
