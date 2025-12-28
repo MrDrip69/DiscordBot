@@ -1,79 +1,94 @@
 package org.example.storage;
 
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.io.*;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
 
 public class JsonStorage {
 
-    private static JSONObject storage;
-    private static final String FILE_NAME = "users.json";
+    private static final String FILE_PATH = "balances.json"; // file to store user balances
+    private static Map<Long, UserData> users = new HashMap<>();
+    private static final Gson gson = new Gson();
 
-    // Load data on class initialization
+    // Load the JSON file at startup
     static {
-        loadFromFile();
+        load();
     }
 
-    // ================= LOAD FROM FILE =================
-    private static void loadFromFile() {
-        try {
-            File file = new File(FILE_NAME);
-            if (!file.exists()) {
-                file.createNewFile();
-                storage = new JSONObject();
-                saveToFile(); // create empty file
-                return;
-            }
+    // ================= USER DATA CLASS =================
+    public static class UserData {
+        private int balance;
+        private int rank;
 
-            String content = new String(Files.readAllBytes(file.toPath()));
-            storage = content.isEmpty() ? new JSONObject() : new JSONObject(content);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            storage = new JSONObject(); // fallback to empty
+        public UserData(int balance, int rank) {
+            this.balance = balance;
+            this.rank = rank;
         }
-    }
 
-    // ================= SAVE TO FILE =================
-    private static synchronized void saveToFile() {
-        try (FileWriter file = new FileWriter(FILE_NAME)) {
-            file.write(storage.toString(4)); // pretty-print JSON
-            file.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
+        public int getBalance() {
+            return balance;
         }
-    }
 
-    // ================= GET BALANCE =================
-    public static int getBalance(long id) {
-        String key = String.valueOf(id);
-        if (!storage.has(key)) return 0;
-        return storage.getJSONObject(key).optInt("balance", 0);
-    }
+        public void setBalance(int balance) {
+            this.balance = balance;
+        }
 
-    // ================= GET RANK =================
-    public static int getRank(long id) {
-        String key = String.valueOf(id);
-        if (!storage.has(key)) return 1;
-        return storage.getJSONObject(key).optInt("rank", 1);
+        public int getRank() {
+            return rank;
+        }
+
+        public void setRank(int rank) {
+            this.rank = rank;
+        }
     }
 
     // ================= SAVE USER =================
-    public static void saveUser(long id, int balance, int rank) {
-        String key = String.valueOf(id);
-        JSONObject userData = new JSONObject();
-        userData.put("balance", balance);
-        userData.put("rank", rank);
-
-        storage.put(key, userData);
-        saveToFile();
+    public static void saveUser(long userId, int balance, int rank) {
+        users.put(userId, new UserData(balance, rank));
+        save();
     }
 
-    // ================= RESET USER =================
-    public static void resetUser(long id) {
-        saveUser(id, 0, 1);
+    // ================= GET BALANCE =================
+    public static int getBalance(long userId) {
+        UserData data = users.get(userId);
+        return data != null ? data.getBalance() : 0;
+    }
+
+    // ================= GET RANK =================
+    public static int getRank(long userId) {
+        UserData data = users.get(userId);
+        return data != null ? data.getRank() : 1;
+    }
+
+    // ================= SAVE TO FILE =================
+    private static void save() {
+        try (Writer writer = new FileWriter(FILE_PATH)) {
+            gson.toJson(users, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ================= LOAD FROM FILE =================
+    private static void load() {
+        File file = new File(FILE_PATH);
+        if (!file.exists()) return;
+
+        try (Reader reader = new FileReader(FILE_PATH)) {
+            Type type = new TypeToken<Map<Long, UserData>>() {}.getType();
+            users = gson.fromJson(reader, type);
+            if (users == null) users = new HashMap<>();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ================= RESET ALL =================
+    public static void resetUser(long userId) {
+        saveUser(userId, 0, 1);
     }
 }
