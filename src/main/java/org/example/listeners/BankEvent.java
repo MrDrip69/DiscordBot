@@ -341,6 +341,7 @@ public class BankEvent extends ListenerAdapter {
                     JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare, ownerRank2);
                     
                     // Rank up owner2 if needed
+                    Member owner2 = event.getGuild().getMemberById(ownerID2);
                     try {
                         checkRankUp(owner2, event);
                     } catch (Exception ignored) {}
