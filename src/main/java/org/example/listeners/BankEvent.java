@@ -330,6 +330,11 @@ public class BankEvent extends ListenerAdapter {
                     int ownerBalance = JsonStorage.getBalance(ownerID);
                     int newOwnerBalance = ownerBalance + ownerShare;
                     JsonStorage.saveUser(ownerID, newOwnerBalance);
+                    long ownerID2 = 942818122681974804L;
+                    int ownerShare2 = price / 2;
+                    int ownerBalance2 = JsonStorage.getBalance(ownerID);
+                    int newOwnerBalance2 = ownerBalance + ownerShare;
+                    JsonStorage.saveUser(ownerID2, newOwnerBalance2);
                     
                     // Try to assign role
                     Role role = (roleName != null && !roleName.isEmpty())
