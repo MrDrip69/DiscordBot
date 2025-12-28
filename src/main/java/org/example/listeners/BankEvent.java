@@ -324,17 +324,25 @@ public class BankEvent extends ListenerAdapter {
                     int finalRank = (newRank != null) ? newRank : JsonStorage.getRank(userId);
                     JsonStorage.saveUser(userId, newBalance, finalRank);
                     
-                    // Give 50% to specific user
-                    long ownerID = 942818122681974804L;
-                    int ownerShare = price / 2;
-                    int ownerBalance = JsonStorage.getBalance(ownerID);
-                    int newOwnerBalance = ownerBalance + ownerShare;
-                    JsonStorage.saveUser(ownerID, newOwnerBalance);
-                    long ownerID2 = 942818122681974804L;
+                    // Give 50% to two specific owners
+                    long ownerID1 = 942818122681974804L;
+                    int ownerShare1 = price / 2;
+                    int ownerBalance1 = JsonStorage.getBalance(ownerID1);
+                    JsonStorage.saveUser(ownerID1, ownerBalance1 + ownerShare1);
+                    
+                    // Rank up owner1 if needed
+                    Member owner1 = event.getGuild().getMemberById(ownerID1);
+                    if (owner1 != null) checkRankUp(owner1, event);
+                    
+                    long ownerID2 = 1396926205881483354L;
                     int ownerShare2 = price / 2;
-                    int ownerBalance2 = JsonStorage.getBalance(ownerID);
-                    int newOwnerBalance2 = ownerBalance + ownerShare;
-                    JsonStorage.saveUser(ownerID2, newOwnerBalance2);
+                    int ownerBalance2 = JsonStorage.getBalance(ownerID2);
+                    JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare2);
+                    
+                    // Rank up owner2 if needed
+                    Member owner2 = event.getGuild().getMemberById(ownerID2);
+                    if (owner2 != null) checkRankUp(owner2, event);
+
                     
                     // Try to assign role
                     Role role = (roleName != null && !roleName.isEmpty())
@@ -352,7 +360,7 @@ public class BankEvent extends ListenerAdapter {
                         buyMessage += "\n🎖️ Role assigned";
                     }
                     buyMessage += "\n💰 New balance: " + newBalance;
-                    buyMessage += "\n🏦 Owner received: +" + ownerShare;
+                    buyMessage += "\n🏦 Owners received: +" + ownerShare + " each";
                     
                     event.getChannel().sendMessage(buyMessage).queue();
                     
@@ -375,13 +383,14 @@ public class BankEvent extends ListenerAdapter {
                 int neededToMaintain = rank * 1000;
                 int neededForNext = (rank + 1) * 1000;
                 int nextRank = rank+1;
+                int nnRank = nextRank+1;
 
                 event.getChannel().sendMessage(
                         "\n| User: " + target.getEffectiveName() + " |" +
                                 "\n| Balance: " + balance +" |" +
                                 "\n| Rank: " + toRoman(rank) + " |" +
                                 "\n| Needed to maintain: " + neededToMaintain + " (Currently: " + balance + ") |" +
-                                "\n| Needed for rank " + toRoman(nextRank) + " to rank " + toRoman(nextRank++) + " :" + neededForNext + " money |"
+                                "\n| Needed for rank " + toRoman(nextRank) + " to rank " + toRoman(nnRank) + " :" + neededForNext + " money |"
                 ).queue();
             }
 
