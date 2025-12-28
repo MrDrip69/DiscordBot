@@ -1,114 +1,79 @@
 package org.example.storage;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import org.json.JSONObject;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 
 public class JsonStorage {
-    private static final String DATA_FILE = "user_data.json";
-    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private static final ReadWriteLock lock = new ReentrantReadWriteLock();
-    
-    private static Map<Long, UserInfo> userData = new HashMap<>();
-    
-    public static class UserInfo {
-        public long userId;
-        public int balance;
-        public int rank;
-        
-        public UserInfo(long userId, int balance, int rank) {
-            this.userId = userId;
-            this.balance = balance;
-            this.rank = rank;
-        }
+
+    private static JSONObject storage;
+    private static final String FILE_NAME = "users.json";
+
+    // Load data on class initialization
+    static {
+        loadFromFile();
     }
-    
-    public static void initialize() {
-        lock.writeLock().lock();
+
+    // ================= LOAD FROM FILE =================
+    private static void loadFromFile() {
         try {
-            File file = new File(DATA_FILE);
-            if (file.exists()) {
-                try {
-                    String content = new String(Files.readAllBytes(file.toPath()));
-                    userData = gson.fromJson(content, new TypeToken<Map<Long, UserInfo>>(){}.getType());
-                    if (userData == null) userData = new HashMap<>();
-                    System.out.println("[Storage] Loaded " + userData.size() + " users from JSON");
-                } catch (Exception e) {
-                    System.out.println("[Storage] Error loading JSON: " + e.getMessage());
-                    userData = new HashMap<>();
-                }
-            } else {
-                userData = new HashMap<>();
-                save();
-                System.out.println("[Storage] Created new user_data.json");
+            File file = new File(FILE_NAME);
+            if (!file.exists()) {
+                file.createNewFile();
+                storage = new JSONObject();
+                saveToFile(); // create empty file
+                return;
             }
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-    
-    public static void saveUser(long userId, int balance, int rank) {
-        lock.writeLock().lock();
-        try {
-            userData.put(userId, new UserInfo(userId, balance, rank));
-            save();
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-    
-    public static int getBalance(long userId) {
-        lock.readLock().lock();
-        try {
-            UserInfo info = userData.get(userId);
-            return info != null ? info.balance : 0;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    public static int getRank(long userId) {
-        lock.readLock().lock();
-        try {
-            UserInfo info = userData.get(userId);
-            return info != null ? info.rank : 1;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    public static Map<Long, UserInfo> getAllUsers() {
-        lock.readLock().lock();
-        try {
-            return new HashMap<>(userData);
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    public static void deleteUser(long userId) {
-        lock.writeLock().lock();
-        try {
-            userData.remove(userId);
-            save();
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-    
-    private static void save() {
-        try {
-            String json = gson.toJson(userData);
-            Files.write(Paths.get(DATA_FILE), json.getBytes());
+
+            String content = new String(Files.readAllBytes(file.toPath()));
+            storage = content.isEmpty() ? new JSONObject() : new JSONObject(content);
+
         } catch (IOException e) {
-            System.out.println("[Storage] Error saving JSON: " + e.getMessage());
+            e.printStackTrace();
+            storage = new JSONObject(); // fallback to empty
         }
+    }
+
+    // ================= SAVE TO FILE =================
+    private static synchronized void saveToFile() {
+        try (FileWriter file = new FileWriter(FILE_NAME)) {
+            file.write(storage.toString(4)); // pretty-print JSON
+            file.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ================= GET BALANCE =================
+    public static int getBalance(long id) {
+        String key = String.valueOf(id);
+        if (!storage.has(key)) return 0;
+        return storage.getJSONObject(key).optInt("balance", 0);
+    }
+
+    // ================= GET RANK =================
+    public static int getRank(long id) {
+        String key = String.valueOf(id);
+        if (!storage.has(key)) return 1;
+        return storage.getJSONObject(key).optInt("rank", 1);
+    }
+
+    // ================= SAVE USER =================
+    public static void saveUser(long id, int balance, int rank) {
+        String key = String.valueOf(id);
+        JSONObject userData = new JSONObject();
+        userData.put("balance", balance);
+        userData.put("rank", rank);
+
+        storage.put(key, userData);
+        saveToFile();
+    }
+
+    // ================= RESET USER =================
+    public static void resetUser(long id) {
+        saveUser(id, 0, 1);
     }
 }
