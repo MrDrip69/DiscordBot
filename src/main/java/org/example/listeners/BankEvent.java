@@ -459,39 +459,53 @@ public class BankEvent extends ListenerAdapter {
         return nickname;
     }
 
+    // ================= RANK UP =================
     private void checkRankUp(Member member, MessageReceivedEvent event) {
         long id = member.getIdLong();
         int balance = JsonStorage.getBalance(id);
         int rank = JsonStorage.getRank(id);
-
+    
         while (balance >= rank * 1000) {
             int requirement = rank * 1000;
-            balance -= requirement;
+            balance -= requirement;  // Lose only the requirement amount
             rank++;
             JsonStorage.saveUser(id, balance, rank);
-
-            if (!member.isOwner()) member.modifyNickname(getBaseName(member) + " " + toRoman(rank)).queue();
-
+    
+            // Only change nickname if not owner
+            if (!member.isOwner()) {
+                String baseName = getBaseName(member);
+                member.modifyNickname(baseName + " " + toRoman(rank)).queue();
+            }
+    
+            // Send rank up message and auto-delete after 5 seconds
             event.getChannel().sendMessage(
-                    member.getEffectiveName() + " ranked up to " + toRoman(rank) +
-                            "! 💰 Balance remaining: " + balance
+                member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! 💰 Balance remaining: " + balance
             ).queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
         }
     }
-
+    
+    // ================= RANK DOWN =================
     private void checkRankDown(Member member, MessageReceivedEvent event) {
         long id = member.getIdLong();
         int balance = JsonStorage.getBalance(id);
         int currentRank = JsonStorage.getRank(id);
-
+    
+        // If balance goes negative and rank > 1, demote and recalc balance
         if (balance < 0 && currentRank > 1) {
             int newRank = currentRank - 1;
-            int newBalance = (newRank * 1000) + balance;
+            int newBalance = (newRank * 1000) + balance; // balance is negative, so this subtracts
             JsonStorage.saveUser(id, newBalance, newRank);
-
-            if (!member.isOwner()) member.modifyNickname(getBaseName(member) + " " + toRoman(newRank)).queue();
+    
+            String baseName = getBaseName(member);
+            member.modifyNickname(baseName + " " + toRoman(newRank)).queue();
+    
+            // Send rank down message and auto-delete after 5 seconds
+            event.getChannel().sendMessage(
+                    member.getEffectiveName() + " ranked down to " + toRoman(newRank)
+            ).queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
         }
     }
+
 
     private boolean isAllowed(Member member) {
         if (member == null) return false;
