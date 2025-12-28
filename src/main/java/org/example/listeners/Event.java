@@ -51,8 +51,8 @@ public class Event extends ListenerAdapter {
                 return;
             }
 
-            if (amount < 1 || amount > 100) {
-                event.getChannel().sendMessage("❌ Amount must be between 1 and 100.")
+            if (amount < 1) {
+                event.getChannel().sendMessage("❌ Amount must be greater then 0.")
                         .queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
                 return;
             }
@@ -88,3 +88,4 @@ public class Event extends ListenerAdapter {
         }
     }
 }
+
