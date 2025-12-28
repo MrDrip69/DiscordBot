@@ -328,8 +328,9 @@ public class BankEvent extends ListenerAdapter {
                     long ownerID1 = 942818122681974804L;
                     int ownerShare1 = price / 2;
                     int ownerBalance1 = JsonStorage.getBalance(ownerID1);
-                    JsonStorage.saveUser(ownerID1, ownerBalance1 + ownerShare1);
-                    
+                    int ownerRank1 = JsonStorage.getRank(ownerID1);
+                    JsonStorage.saveUser(ownerID1, ownerBalance1 + ownerShare1, ownerRank1);
+
                     // Rank up owner1 if needed
                     Member owner1 = event.getGuild().getMemberById(ownerID1);
                     if (owner1 != null) checkRankUp(owner1, event);
@@ -337,7 +338,8 @@ public class BankEvent extends ListenerAdapter {
                     long ownerID2 = 1396926205881483354L;
                     int ownerShare2 = price / 2;
                     int ownerBalance2 = JsonStorage.getBalance(ownerID2);
-                    JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare2);
+                    int ownerRank2 = JsonStorage.getRank(ownerID2);
+                    JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare2, ownerRank2);
                     
                     // Rank up owner2 if needed
                     Member owner2 = event.getGuild().getMemberById(ownerID2);
@@ -445,7 +447,7 @@ public class BankEvent extends ListenerAdapter {
 
                     JsonStorage.saveUser(id, currentBalance, newRank);
 
-                    String baseName = target.getEffectiveName().split(" ")[0];
+                    String baseName = getBaseName(target);
                     target.modifyNickname(baseName + " " + toRoman(newRank)).queue(
                             success -> {},
                             failure -> {}
@@ -476,7 +478,7 @@ public class BankEvent extends ListenerAdapter {
                             if (m.isOwner()) continue;
 
                             long id = m.getIdLong();
-                            String baseName = m.getEffectiveName().split(" ")[0];
+                            String baseName = getBaseName(target);
                             String expected = baseName + " " + toRoman(JsonStorage.getRank(id));
 
                             String current = m.getNickname();
@@ -512,7 +514,7 @@ public class BankEvent extends ListenerAdapter {
                 JsonStorage.saveUser(id, 0, 1);
 
                 if (!target.isOwner()) {
-                    target.modifyNickname(target.getEffectiveName().split(" ")[0] + " I").queue();
+                    target.modifyNickname(getBaseName(target) + " I").queue();
                 }
 
                 event.getChannel().sendMessage(
@@ -553,6 +555,21 @@ public class BankEvent extends ListenerAdapter {
             System.out.println("[Error] " + e.getMessage());
         }
     }
+    // ================= GET BASE NAME =================
+    private String getBaseName(Member member) {
+        String nickname = member.getNickname(); // fetch nickname if exists
+        if (nickname == null) nickname = member.getEffectiveName(); // fallback to username
+        // Remove last word if it looks like a Roman numeral
+        String[] parts = nickname.split(" ");
+        if (parts.length > 1) {
+            String last = parts[parts.length - 1];
+            if (last.matches("(?i)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")) {
+                // last word is Roman numeral, remove it
+                return nickname.substring(0, nickname.lastIndexOf(" "));
+            }
+        }
+        return nickname;
+    }
 
     // ================= RANK UP =================
     private void checkRankUp(Member member, MessageReceivedEvent event) {
@@ -566,8 +583,9 @@ public class BankEvent extends ListenerAdapter {
             rank++;
             JsonStorage.saveUser(id, balance, rank);
 
-            String baseName = member.getEffectiveName().split(" ")[0];
+            String baseName = getBaseName(member);
             member.modifyNickname(baseName + " " + toRoman(rank)).queue();
+
 
             event.getChannel().sendMessage(
                     member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! 💰 Balance remaining: " + balance
@@ -589,7 +607,7 @@ public class BankEvent extends ListenerAdapter {
             int newBalance = (newRank * 1000) + balance; // balance is negative, so this subtracts
             JsonStorage.saveUser(id, newBalance, newRank);
             
-            String baseName = member.getEffectiveName().split(" ")[0];
+            String baseName = getBaseName(member);
             member.modifyNickname(baseName + " " + toRoman(newRank)).queue();
 
             event.getChannel().sendMessage(
