@@ -362,13 +362,14 @@ public class BankEvent extends ListenerAdapter {
                 int rank = JsonStorage.getRank(id);
                 int neededToMaintain = rank * 1000;
                 int neededForNext = (rank + 1) * 1000;
+                int nextRank = rank++;
 
                 event.getChannel().sendMessage(
                         "\n| User: " + target.getEffectiveName() + " |" +
                                 "\n| Balance: " + balance +" |" +
                                 "\n| Rank: " + toRoman(rank) + " |" +
                                 "\n| Needed to maintain: " + neededToMaintain + " (Currently: " + balance + ") |" +
-                                "\n| Needed for rank " + rank+1 + " to rank " + rank+2 + " :" + neededForNext + " money |"
+                                "\n| Needed for rank " + nextRank + " to rank " + nextRank++ + " :" + neededForNext + " money |"
                 ).queue();
             }
 
