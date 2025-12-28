@@ -300,8 +300,19 @@ public class BankEvent extends ListenerAdapter {
                 String roleName = SHOP_ROLES.get(itemName);
                 long userId = sender.getIdLong();
                 int balance = JsonStorage.getBalance(userId);
-                
-                if (balance < price) {
+                int userRank = JsonStorage.getRank(userId);
+                int requiredRank = SHOP_RANKS.get(itemName);
+
+                if (userRank < requiredRank) {
+                    event.getChannel().sendMessage(
+                        "❌ You need rank **" + toRoman(requiredRank) +
+                        "** to buy this item.\n" +
+                        "⭐ Your current rank: **" + toRoman(userRank) + "**"
+                    ).queue();
+                    return;
+                }
+                    
+                else if (balance < price) {
                     event.getChannel().sendMessage("❌ Insufficient balance. You have " + balance + ", need " + price).queue();
                     return;
                 }
@@ -318,8 +329,7 @@ public class BankEvent extends ListenerAdapter {
                     int ownerShare = price / 2;
                     int ownerBalance = JsonStorage.getBalance(ownerID);
                     int newOwnerBalance = ownerBalance + ownerShare;
-                    int ownerRank = JsonStorage.getRank(ownerID);
-                    JsonStorage.saveUser(ownerID, newOwnerBalance, ownerRank);
+                    JsonStorage.saveUser(ownerID, newOwnerBalance);
                     
                     // Try to assign role
                     Role role = (roleName != null && !roleName.isEmpty())
@@ -335,9 +345,6 @@ public class BankEvent extends ListenerAdapter {
                     String buyMessage = "✅ " + sender.getEffectiveName() + " bought **" + itemName + "**!";
                     if (role != null) {
                         buyMessage += "\n🎖️ Role assigned";
-                    }
-                    if (newRank != null) {
-                        buyMessage += "\n⭐ Rank set to: " + toRoman(finalRank);
                     }
                     buyMessage += "\n💰 New balance: " + newBalance;
                     buyMessage += "\n🏦 Owner received: +" + ownerShare;
@@ -362,7 +369,7 @@ public class BankEvent extends ListenerAdapter {
                 int rank = JsonStorage.getRank(id);
                 int neededToMaintain = rank * 1000;
                 int neededForNext = (rank + 1) * 1000;
-                int nextRank = rank++;
+                int nextRank = rank+1;
 
                 event.getChannel().sendMessage(
                         "\n| User: " + target.getEffectiveName() + " |" +
