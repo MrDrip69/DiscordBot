@@ -341,10 +341,10 @@ public class BankEvent extends ListenerAdapter {
                     JsonStorage.saveUser(ownerID2, ownerBalance2 + ownerShare, ownerRank2);
                     
                     // Rank up owner2 if needed
-                    Member owner2 = event.getGuild().getMemberById(ownerID2);
-                    if (owner2 != null) checkRankUp(owner2, event);
+                    try {
+                        checkRankUp(owner2, event);
+                    } catch (Exception ignored) {}
 
-                    
                     // Try to assign role
                     Role role = (roleName != null && !roleName.isEmpty())
                             ? (event.getGuild().getRolesByName(roleName, true).isEmpty() 
