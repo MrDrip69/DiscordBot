@@ -20,19 +20,37 @@ public class BankEvent extends ListenerAdapter {
     private static final java.util.HashMap<String, Integer> SHOP_RANKS = new java.util.HashMap<>();
     
     static {
-        // CONFIGURE YOUR ITEMS HERE:
-        // Add items by their name (lowercase), price, role name, and rank
-        // Example:
-        // SHOP_PRICES.put("vip", 500);
-        // SHOP_ROLES.put("vip", "VIP");
-        // SHOP_RANKS.put("vip", 5);
-        // 
-        // SHOP_PRICES.put("premium", 1000);
-        // SHOP_ROLES.put("premium", "Premium Member");
-        // SHOP_RANKS.put("premium", 10);
-        SHOP_PRICES.put("chad", 10000);
-        SHOP_ROLES.put("chad", "chad");
-        SHOP_RANKS.put("chad", 10);
+        SHOP_PRICES.put("knight", 900);
+        SHOP_ROLES.put("knight", "knight");
+        SHOP_RANKS.put("knight", 4);
+        SHOP_PRICES.put("dame", 900);
+        SHOP_ROLES.put("dame", "dame");
+        SHOP_RANKS.put("dame", 4);
+
+        SHOP_PRICES.put("lord",950);
+        SHOP_ROLES.put("lord", "lord");
+        SHOP_RANKS.put("lord", 8);
+        SHOP_PRICES.put("lady",950);
+        SHOP_ROLES.put("lady", "lady");
+        SHOP_RANKS.put("lady", 8);
+
+        SHOP_PRICES.put("duke", 1250);
+        SHOP_ROLES.put("duke", "duke");
+        SHOP_RANKS.put("duke", 9);
+        SHOP_PRICES.put("duchess", 1250);
+        SHOP_ROLES.put("duchess", "duchess");
+        SHOP_RANKS.put("duchess", 9);
+
+        SHOP_PRICES.put("prince", 12000);
+        SHOP_ROLES.put("prince", "prince");
+        SHOP_RANKS.put("prince", 13);
+        SHOP_PRICES.put("princess", 12000);
+        SHOP_ROLES.put("princess", "princess");
+        SHOP_RANKS.put("princess", 13);
+
+        SHOP_PRICES.put("archduke", 20000);
+        SHOP_ROLES.put("archduke", "archduke");
+        SHOP_RANKS.put("archduke", 22);
     }
     // ========================================================
 
