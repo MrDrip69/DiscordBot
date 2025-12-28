@@ -573,27 +573,27 @@ public class BankEvent extends ListenerAdapter {
 
     // ================= RANK UP =================
     private void checkRankUp(Member member, MessageReceivedEvent event) {
-        long id = member.getIdLong();
-        int balance = JsonStorage.getBalance(id);
-        int rank = JsonStorage.getRank(id);
+    long id = member.getIdLong();
+    int balance = JsonStorage.getBalance(id);
+    int rank = JsonStorage.getRank(id);
 
-        while (balance >= rank * 1000) {
-            int requirement = rank * 1000;
-            balance -= requirement;  // Lose only the requirement amount
-            rank++;
-            JsonStorage.saveUser(id, balance, rank);
+    while (balance >= rank * 1000) {
+        int requirement = rank * 1000;
+        balance -= requirement;  // Lose only the requirement amount
+        rank++;
+        JsonStorage.saveUser(id, balance, rank);
 
+        // Only change nickname if not owner
+        if (!member.isOwner()) {
             String baseName = getBaseName(member);
             member.modifyNickname(baseName + " " + toRoman(rank)).queue();
-
-
-            event.getChannel().sendMessage(
-                    member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! 💰 Balance remaining: " + balance
-            ).queue(rankMessage ->
-                    rankMessage.delete().queueAfter(5, TimeUnit.SECONDS, null, failure -> {})
-            );
         }
+
+        event.getChannel().sendMessage(
+            member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! 💰 Balance remaining: " + balance
+        ).queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
     }
+
 
     // ================= RANK DOWN =================
     private void checkRankDown(Member member, MessageReceivedEvent event) {
