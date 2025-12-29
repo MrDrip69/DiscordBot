@@ -321,17 +321,21 @@ public class BankEvent extends ListenerAdapter {
     private boolean isAllowed(Member m) {
         return m != null && (m.isOwner() || m.getRoles().stream().anyMatch(r -> r.getName().equalsIgnoreCase(ADMIN_ROLE_NAME)));
     }
-
-    private String getBaseName(Member m) {
-        String nick = m.getNickname() != null ? m.getNickname() : m.getEffectiveName();
+        private String getBaseName(Member member) {
+        String nick = member.getNickname();
+        if (nick == null) nick = member.getEffectiveName();
+    
         String[] parts = nick.split(" ");
-        String last = parts;
-        String last = parts[parts.length - 1];
-        if (last.matches("(?i)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")) {
-            return nick.substring(0, nick.lastIndexOf(" "));
+        if (parts.length > 1) {
+            String lastPart = parts[parts.length - 1];
+            // Check if last part is a Roman numeral
+            if (lastPart.matches("(?i)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")) {
+                return nick.substring(0, nick.lastIndexOf(" "));
+            }
         }
         return nick;
     }
+
 
     // ========== RANK MANAGEMENT ==========
     private void checkRankUp(Member member, MessageReceivedEvent event) {
