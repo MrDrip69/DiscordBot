@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import org.example.listeners.BankEvent;
 import org.example.listeners.Event;
+import org.example.storage.JsonStorage;
 
 import javax.security.auth.login.LoginException;
 
@@ -26,6 +27,9 @@ public class Main {
         if (token == null) {
             throw new LoginException("Token not found in .env or DISCORD_BOT_TOKEN environment variable");
         }
+
+        // Initialize PostgreSQL storage
+        JsonStorage.initialize();
 
         // Build JDA shard manager
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(token);
