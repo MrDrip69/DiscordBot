@@ -4,7 +4,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 
 import java.sql.*;
 
-public class PostgresStorage {
+public class JsonStorage {
 
     private static Connection connection;
 
