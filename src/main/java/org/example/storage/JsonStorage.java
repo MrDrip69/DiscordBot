@@ -1,94 +1,104 @@
 package org.example.storage;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.*;
-import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.*;
 
 public class JsonStorage {
 
-    private static final String FILE_PATH = "balances.json"; // file to store user balances
-    private static Map<Long, UserData> users = new HashMap<>();
-    private static final Gson gson = new Gson();
+    private static Connection connection;
 
-    // Load the JSON file at startup
-    static {
-        load();
+    // ================= INIT =================
+    public static void initialize() {
+        try {
+            String dbUrl = System.getenv("DATABASE_URL");
+
+            if (dbUrl == null) {
+                throw new RuntimeException("DATABASE_URL not found");
+            }
+
+            connection = DriverManager.getConnection(dbUrl);
+            createTable();
+            System.out.println("✅ Connected to PostgreSQL");
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to connect DB", e);
+        }
     }
 
-    // ================= USER DATA CLASS =================
-    public static class UserData {
-        private int balance;
-        private int rank;
+    // ================= TABLE =================
+    private static void createTable() throws SQLException {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id BIGINT PRIMARY KEY,
+                balance INT NOT NULL,
+                rank INT NOT NULL
+            )
+        """;
 
-        public UserData(int balance, int rank) {
-            this.balance = balance;
-            this.rank = rank;
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
         }
+    }
 
-        public int getBalance() {
-            return balance;
+    // ================= GET BALANCE =================
+    public static int getBalance(long userId) {
+        try {
+            PreparedStatement ps = connection.prepareStatement(
+                "SELECT balance FROM users WHERE user_id = ?"
+            );
+            ps.setLong(1, userId);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) return rs.getInt("balance");
+
+            createUser(userId);
+            return 0;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        public void setBalance(int balance) {
-            this.balance = balance;
-        }
+    // ================= GET RANK =================
+    public static int getRank(long userId) {
+        try {
+            PreparedStatement ps = connection.prepareStatement(
+                "SELECT rank FROM users WHERE user_id = ?"
+            );
+            ps.setLong(1, userId);
+            ResultSet rs = ps.executeQuery();
 
-        public int getRank() {
-            return rank;
-        }
+            if (rs.next()) return rs.getInt("rank");
 
-        public void setRank(int rank) {
-            this.rank = rank;
+            createUser(userId);
+            return 1;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
     // ================= SAVE USER =================
     public static void saveUser(long userId, int balance, int rank) {
-        users.put(userId, new UserData(balance, rank));
-        save();
-    }
+        try {
+            PreparedStatement ps = connection.prepareStatement("""
+                INSERT INTO users (user_id, balance, rank)
+                VALUES (?, ?, ?)
+                ON CONFLICT (user_id)
+                DO UPDATE SET balance = EXCLUDED.balance, rank = EXCLUDED.rank
+            """);
 
-    // ================= GET BALANCE =================
-    public static int getBalance(long userId) {
-        UserData data = users.get(userId);
-        return data != null ? data.getBalance() : 0;
-    }
+            ps.setLong(1, userId);
+            ps.setInt(2, balance);
+            ps.setInt(3, rank);
+            ps.executeUpdate();
 
-    // ================= GET RANK =================
-    public static int getRank(long userId) {
-        UserData data = users.get(userId);
-        return data != null ? data.getRank() : 1;
-    }
-
-    // ================= SAVE TO FILE =================
-    private static void save() {
-        try (Writer writer = new FileWriter(FILE_PATH)) {
-            gson.toJson(users, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    // ================= LOAD FROM FILE =================
-    private static void load() {
-        File file = new File(FILE_PATH);
-        if (!file.exists()) return;
-
-        try (Reader reader = new FileReader(FILE_PATH)) {
-            Type type = new TypeToken<Map<Long, UserData>>() {}.getType();
-            users = gson.fromJson(reader, type);
-            if (users == null) users = new HashMap<>();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // ================= RESET ALL =================
-    public static void resetUser(long userId) {
+    // ================= CREATE USER =================
+    private static void createUser(long userId) {
         saveUser(userId, 0, 1);
     }
 }
