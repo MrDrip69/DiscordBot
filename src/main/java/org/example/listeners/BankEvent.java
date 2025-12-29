@@ -325,7 +325,7 @@ public class BankEvent extends ListenerAdapter {
     private String getBaseName(Member m) {
         String nick = m.getNickname() != null ? m.getNickname() : m.getEffectiveName();
         String[] parts = nick.split(" ");
-        String last = parts
+        String last = parts;
         String last = parts[parts.length - 1];
         if (last.matches("(?i)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")) {
             return nick.substring(0, nick.lastIndexOf(" "));
