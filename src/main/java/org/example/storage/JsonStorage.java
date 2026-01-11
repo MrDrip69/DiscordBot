@@ -4,11 +4,19 @@ import java.sql.*;
 
 public class JsonStorage {
 
-    public static Connection connection;
+    private static Connection connection;
 
     // Initialize the database connection
     public static void initialize() {
+        connect();
+        createTableIfNotExists();
+    }
+
+    /** Ensures the connection is alive; reconnects if needed */
+    private static void connect() {
         try {
+            if (connection != null && !connection.isClosed() && connection.isValid(2)) return;
+
             String host = System.getenv().getOrDefault("DB_HOST", "localhost");
             String port = System.getenv().getOrDefault("DB_PORT", "5432");
             String db   = System.getenv().getOrDefault("DB_NAME", "bankbot");
@@ -17,22 +25,7 @@ public class JsonStorage {
 
             String url = "jdbc:postgresql://" + host + ":" + port + "/" + db;
             connection = DriverManager.getConnection(url, user, pass);
-
             System.out.println("[INFO] Database connected successfully!");
-
-            // Create table if it doesn't exist
-            String sql = """
-                CREATE TABLE IF NOT EXISTS users (
-                    id BIGINT PRIMARY KEY,
-                    balance INT NOT NULL,
-                    rank INT NOT NULL,
-                    points INT NOT NULL
-                );
-            """;
-
-            try (Statement stmt = connection.createStatement()) {
-                stmt.execute(sql);
-            }
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -40,23 +33,40 @@ public class JsonStorage {
         }
     }
 
-    // Get user's balance
+    private static void createTableIfNotExists() {
+        connect();
+        String sql = """
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGINT PRIMARY KEY,
+                    balance INT NOT NULL,
+                    rank INT NOT NULL,
+                    points INT NOT NULL
+                );
+            """;
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.out.println("[ERROR] Failed to create table!");
+        }
+    }
+
+    // ========== GETTERS ==========
     public static int getBalance(long userId) {
         return getInt(userId, "balance", 0);
     }
 
-    // Get user's points
     public static int getPoints(long userId) {
         return getInt(userId, "points", 0);
     }
 
-    // Get user's rank
     public static int getRank(long userId) {
         return getInt(userId, "rank", 1);
     }
-    
+
+    // ========== ADDERS ==========
     public static void addBalance(long userId, int amount) {
-        if (connection == null) return;
+        connect();
         int balance = getBalance(userId) + amount;
         int rank = getRank(userId);
         int points = getPoints(userId);
@@ -64,36 +74,30 @@ public class JsonStorage {
     }
 
     public static void addPoints(long userId, int amount) {
-        if (connection == null) return;
+        connect();
         int balance = getBalance(userId);
         int rank = getRank(userId);
         int points = getPoints(userId) + amount;
         saveUser(userId, balance, rank, points);
     }
 
-
-    // Generic helper
+    // ========== GENERIC GET ==========
     private static int getInt(long userId, String column, int def) {
-        if (connection == null) return def;
-
-        try (PreparedStatement ps =
-                     connection.prepareStatement("SELECT " + column + " FROM users WHERE id=?")) {
-
+        connect();
+        String sql = "SELECT " + column + " FROM users WHERE id=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setLong(1, userId);
             ResultSet rs = ps.executeQuery();
-
             if (rs.next()) return rs.getInt(column);
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return def;
     }
 
-    // Save or update a user
+    // ========== SAVE/UPDATE ==========
     public static void saveUser(long userId, int balance, int rank, int points) {
-        if (connection == null) return;
-
+        connect();
         String sql = """
             INSERT INTO users (id, balance, rank, points)
             VALUES (?, ?, ?, ?)
@@ -112,6 +116,7 @@ public class JsonStorage {
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
+            System.out.println("[ERROR] Failed to save user " + userId);
         }
     }
 }
