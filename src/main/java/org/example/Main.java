@@ -28,9 +28,6 @@ public class Main {
             throw new LoginException("Token not found in .env or DISCORD_BOT_TOKEN environment variable");
         }
 
-        // Initialize PostgreSQL storage
-        JsonStorage.initialize();
-
         // Build JDA shard manager
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(token);
         builder.setStatus(OnlineStatus.ONLINE);
