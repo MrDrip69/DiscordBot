@@ -1,5 +1,6 @@
 package org.example.listeners;
 
+import com.google.gson.annotations.JsonAdapter;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -44,9 +45,11 @@ public class BankEvent extends ListenerAdapter {
 
         switch (cmd) {
             case "!top" -> handleTop(event);
-            case "!addt" -> handleAddT(sender, args, event);
-            case "!add" -> handleAdd(sender, args, event);
-            case "!remove" -> handleRemove(sender, args, event);
+            case "!addtm" -> handleAddT(sender, args, event);
+            case "!addm" -> handleAdd(sender, args, event);
+            case "!removem" -> handleRemove(sender, args, event);
+            case "!addp" -> handleAddP(sender, args, event);
+            case "!removep" -> handleRemoveP(sender, args, event);
             case "!give" -> handleGive(sender, args, event);
             case "!buy" -> handleBuy(sender, args, event);
             case "!info" -> handleInfo(sender, args, event);
@@ -77,7 +80,7 @@ public class BankEvent extends ListenerAdapter {
     private void handleAddT(Member sender, String[] args, MessageReceivedEvent event) {
         if (!isAllowed(sender)) { event.getChannel().sendMessage("You don't have permission.").queue(); return; }
         if (event.getMessage().getMentions().getMembers().isEmpty() || args.length < 3) { 
-            event.getChannel().sendMessage("Usage: !addt @user amount").queue(); return; 
+            event.getChannel().sendMessage("Usage: !addtM @user amount").queue(); return;
         }
 
         Member target = event.getMessage().getMentions().getMembers().get(0);
@@ -92,21 +95,17 @@ public class BankEvent extends ListenerAdapter {
                 int taxAmount = (amount * 25) / 100;
                 int userReceives = amount - taxAmount;
                 int bonusToTaxCollector = (taxAmount * 5) / 100;
-                int newBalance = JsonStorage.getBalance(id) + userReceives;
-                JsonStorage.saveUser(id, newBalance, JsonStorage.getRank(id));
-                JsonStorage.saveUser(taxUserID, JsonStorage.getBalance(taxUserID) + bonusToTaxCollector, JsonStorage.getRank(taxUserID));
+                JsonStorage.addBalance(id, userReceives);
+                JsonStorage.addBalance(taxUserID, bonusToTaxCollector);
 
                 event.getChannel().sendMessage(
                     "Added " + userReceives + " to " + target.getEffectiveName() +
-                    " (25% tax applied) | Balance: " + newBalance +
+                    " (25% tax applied) | Balance: " + JsonStorage.getBalance(id) +
                     "\n💰 Added: +" + bonusToTaxCollector + " to the banker collector"
                 ).queue();
-                checkRankUp(target, event);
             } else {
-                int newBalance = JsonStorage.getBalance(id) + amount;
-                JsonStorage.saveUser(id, newBalance, JsonStorage.getRank(id));
-                event.getChannel().sendMessage("Added " + amount + " to " + target.getEffectiveName() + " | Balance: " + newBalance).queue();
-                checkRankUp(target, event);
+                JsonStorage.addBalance(id, amount);
+                event.getChannel().sendMessage("Added " + amount + " to " + target.getEffectiveName() + " | Balance: " + JsonStorage.getBalance(id)).queue();
             }
         } catch (NumberFormatException e) {
             event.getChannel().sendMessage("Amount must be a number.").queue();
@@ -116,7 +115,7 @@ public class BankEvent extends ListenerAdapter {
     private void handleAdd(Member sender, String[] args, MessageReceivedEvent event) {
         if (!isAllowed(sender)) { event.getChannel().sendMessage("You don't have permission.").queue(); return; }
         if (event.getMessage().getMentions().getMembers().isEmpty() || args.length < 3) { 
-            event.getChannel().sendMessage("Usage: !add @user amount").queue(); return; 
+            event.getChannel().sendMessage("Usage: !addM @user amount").queue(); return;
         }
 
         Member target = event.getMessage().getMentions().getMembers().get(0);
@@ -125,10 +124,8 @@ public class BankEvent extends ListenerAdapter {
         try {
             int amount = Integer.parseInt(args[2]);
             long id = target.getIdLong();
-            int newBalance = JsonStorage.getBalance(id) + amount;
-            JsonStorage.saveUser(id, newBalance, JsonStorage.getRank(id));
-            event.getChannel().sendMessage("Added " + amount + " to " + target.getEffectiveName() + " | Balance: " + newBalance).queue();
-            checkRankUp(target, event);
+            JsonStorage.addBalance(id, amount);
+            event.getChannel().sendMessage("Added " + amount + " to " + target.getEffectiveName() + " | Balance: " + JsonStorage.getBalance(id)).queue();
         } catch (NumberFormatException e) {
             event.getChannel().sendMessage("Amount must be a number.").queue();
         }
@@ -137,7 +134,7 @@ public class BankEvent extends ListenerAdapter {
     private void handleRemove(Member sender, String[] args, MessageReceivedEvent event) {
         if (!isAllowed(sender)) { event.getChannel().sendMessage("You don't have permission.").queue(); return; }
         if (event.getMessage().getMentions().getMembers().isEmpty() || args.length < 3) { 
-            event.getChannel().sendMessage("Usage: !remove @user amount").queue(); return; 
+            event.getChannel().sendMessage("Usage: !removeM @user amount").queue(); return;
         }
 
         Member target = event.getMessage().getMentions().getMembers().get(0);
@@ -146,10 +143,8 @@ public class BankEvent extends ListenerAdapter {
         try {
             int amount = Integer.parseInt(args[2]);
             long id = target.getIdLong();
-            int newBalance = JsonStorage.getBalance(id) - amount;
-            JsonStorage.saveUser(id, newBalance, JsonStorage.getRank(id));
-            event.getChannel().sendMessage("Removed " + amount + " from " + target.getEffectiveName() + " | Balance: " + newBalance).queue();
-            checkRankDown(target, event);
+            JsonStorage.addBalance(id, -amount);
+            event.getChannel().sendMessage("Removed " + amount + " from " + target.getEffectiveName() + " | Balance: " + JsonStorage.getBalance(id)).queue();
         } catch (NumberFormatException e) {
             event.getChannel().sendMessage("Amount must be a number.").queue();
         }
@@ -169,23 +164,71 @@ public class BankEvent extends ListenerAdapter {
             long receiverId = target.getIdLong();
             int senderBalance = JsonStorage.getBalance(senderId);
 
-            if (senderBalance < amount) { 
+            if (sender.equals(target)) {
+                event.getChannel().sendMessage("❌ You can’t give money to yourself.").queue();
+                return;
+            }
+            if (senderBalance < amount) {
                 event.getChannel().sendMessage("❌ Insufficient balance. You have " + senderBalance).queue(); 
                 return; 
             }
+            if (amount <= 0) {
+                event.getChannel().sendMessage("❌ Amount must be over 0").queue();
+            }
 
-            JsonStorage.saveUser(senderId, senderBalance - amount, JsonStorage.getRank(senderId));
-            JsonStorage.saveUser(receiverId, JsonStorage.getBalance(receiverId) + amount, JsonStorage.getRank(receiverId));
+            JsonStorage.addBalance(senderId, -amount);
+            JsonStorage.addBalance(receiverId, amount);
 
             event.getChannel().sendMessage(sender.getEffectiveName() + " gave " + amount + " to " + target.getEffectiveName() +
                     "\nYour balance: " + JsonStorage.getBalance(senderId) +
                     "\nReceiver balance: " + JsonStorage.getBalance(receiverId)).queue();
-
-            checkRankDown(sender, event);
-            checkRankUp(target, event);
         } catch (NumberFormatException e) {
             event.getChannel().sendMessage("Amount must be a number.").queue();
         }
+    }
+
+    private void handleAddP(Member sender, String[] args, MessageReceivedEvent event) {
+        if (!isAllowed(sender)) { event.getChannel().sendMessage("You don't have permission.").queue(); return; }
+        if (event.getMessage().getMentions().getMembers().isEmpty() || args.length < 3) {
+            event.getChannel().sendMessage("Usage: !addP @user amount").queue(); return;
+        }
+
+        Member target = event.getMessage().getMentions().getMembers().get(0);
+        if (target.getUser().isBot()) return;
+
+        try {
+            int amount = Integer.parseInt(args[2]);
+            long id = target.getIdLong();
+            JsonStorage.addPoints(id, amount);
+            event.getChannel().sendMessage("Added " + amount + " to " + target.getEffectiveName() + " | Points: " + JsonStorage.getPoints(id)).queue();
+        } catch (NumberFormatException e) {
+            event.getChannel().sendMessage("Amount must be a number.").queue();
+        }
+        checkRankUp(target, event);
+    }
+
+    private void handleRemoveP(Member sender, String[] args, MessageReceivedEvent event) {
+        if (!isAllowed(sender)) { event.getChannel().sendMessage("You don't have permission.").queue(); return; }
+        if (event.getMessage().getMentions().getMembers().isEmpty() || args.length < 3) {
+            event.getChannel().sendMessage("Usage: !removeP @user amount").queue(); return;
+        }
+
+        Member target = event.getMessage().getMentions().getMembers().get(0);
+        if (target.getUser().isBot()) return;
+
+        try {
+            int amount = Integer.parseInt(args[2]);
+            long id = target.getIdLong();
+            if (amount <= 0) {
+                event.getChannel().sendMessage("❌ Amount must be greater than 0").queue();
+                return;
+            }
+            JsonStorage.addPoints(id, -amount);
+            event.getChannel().sendMessage("Removed " + amount + " from " + target.getEffectiveName() + " | Points: " + JsonStorage.getPoints(id)).queue();
+        } catch (NumberFormatException e) {
+            event.getChannel().sendMessage("Amount must be a number.").queue();
+        }
+        checkRankDown(target, event);
     }
 
     private void handleBuy(Member sender, String[] args, MessageReceivedEvent event) {
@@ -207,29 +250,28 @@ public class BankEvent extends ListenerAdapter {
             event.getChannel().sendMessage("❌ Need rank " + toRoman(requiredRank) + ", you have " + toRoman(userRank)).queue();
             return;
         }
+        if (sender.getRoles().stream().anyMatch(r -> r.getName().equalsIgnoreCase(roleName))) {
+            event.getChannel().sendMessage("❌ You already own this role.").queue();
+            return;
+        }
         if (balance < price) {
             event.getChannel().sendMessage("❌ Insufficient balance: " + balance + ", need " + price).queue();
             return;
         }
 
-        int newBalance = balance - price;
-        JsonStorage.saveUser(userId, newBalance, userRank);
+        JsonStorage.addBalance(userId, -price);
 
         // Give 25% to owners
         long owner1 = 942818122681974804L;
         long owner2 = 1396926205881483354L;
         int ownerShare = price / 4;
-        JsonStorage.saveUser(owner1, JsonStorage.getBalance(owner1) + ownerShare, JsonStorage.getRank(owner1));
-        JsonStorage.saveUser(owner2, JsonStorage.getBalance(owner2) + ownerShare, JsonStorage.getRank(owner2));
-
-        checkRankUp(sender, event);
-        Member o1 = event.getGuild().getMemberById(owner1); if (o1 != null) checkRankUp(o1, event);
-        Member o2 = event.getGuild().getMemberById(owner2); if (o2 != null) checkRankUp(o2, event);
+        JsonStorage.addBalance(owner1, ownerShare);
+        JsonStorage.addBalance(owner2, ownerShare);
 
         Role role = event.getGuild().getRolesByName(roleName, true).stream().findFirst().orElse(null);
         if (role != null) event.getGuild().addRoleToMember(sender, role).queue();
 
-        event.getChannel().sendMessage(sender.getEffectiveName() + " bought " + itemName + "! New balance: " + newBalance).queue();
+        event.getChannel().sendMessage(sender.getEffectiveName() + " bought " + itemName + "! New balance: " + JsonStorage.getBalance(userId)).queue();
     }
 
     private void handleInfo(Member sender, String[] args, MessageReceivedEvent event) {
@@ -237,8 +279,9 @@ public class BankEvent extends ListenerAdapter {
         long id = target.getIdLong();
         int balance = JsonStorage.getBalance(id);
         int rank = JsonStorage.getRank(id);
+        int points = JsonStorage.getPoints(id);
         int needed = (rank + 1) * 1000;
-        event.getChannel().sendMessage(target.getEffectiveName() + " | Balance: " + balance + " | Rank: " + toRoman(rank) + " | Next: " + needed).queue();
+        event.getChannel().sendMessage(target.getEffectiveName() + " | Balance: " + balance + " | Rank: " + toRoman(rank) + " | Next: " + points + " out of: " + needed).queue();
     }
 
     private void handleHelp(MessageReceivedEvent event) {
@@ -248,9 +291,11 @@ public class BankEvent extends ListenerAdapter {
             !give @user amount - Transfer money
             !buy itemName - Purchase item
             !top - Top 10
-            !add @user amount - Admin add money
-            !addt @user amount - Admin add taxed
-            !remove @user amount - Admin remove money
+            !addM @user amount - Admin add money
+            !addtM @user amount - Admin add taxed
+            !addP @user amount - Admin add points
+            !removeP @user amount - Admin remove points
+            !removeM @user amount - Admin remove money
             !set @user rankNumber - Admin set rank
             !reset @user - Admin reset user
             !fix - Admin fix nicknames
@@ -272,7 +317,7 @@ public class BankEvent extends ListenerAdapter {
             int balance = JsonStorage.getBalance(id);
             int minBalance = (rank - 1) * 100;
             if (balance < minBalance) balance = minBalance;
-            JsonStorage.saveUser(id, balance, rank);
+            JsonStorage.saveUser(id, balance, rank, 0);
             if (!target.isOwner()) target.modifyNickname(getBaseName(target) + " " + toRoman(rank)).queue();
             event.getChannel().sendMessage("Set rank of " + target.getEffectiveName() + " to " + toRoman(rank)).queue();
         } catch (NumberFormatException e) {
@@ -299,7 +344,7 @@ public class BankEvent extends ListenerAdapter {
 
         Member target = event.getMessage().getMentions().getMembers().get(0);
         long id = target.getIdLong();
-        JsonStorage.saveUser(id, 0, 1);
+        JsonStorage.saveUser(id, 0, 1, 0);
         if (!target.isOwner()) target.modifyNickname(getBaseName(target) + " I").queue();
         event.getChannel().sendMessage(target.getEffectiveName() + " reset to Rank I, Balance 0").queue();
     }
@@ -340,20 +385,21 @@ public class BankEvent extends ListenerAdapter {
     // ========== RANK MANAGEMENT ==========
     private void checkRankUp(Member member, MessageReceivedEvent event) {
         long id = member.getIdLong();
-        int balance = JsonStorage.getBalance(id);
+        int points = JsonStorage.getPoints(id);
         int rank = JsonStorage.getRank(id);
+        int balance = JsonStorage.getBalance(id);
 
-        while (balance >= rank * 1000) {
+        while (points >= rank * 1000) {
             int requirement = rank * 1000;
-            balance -= requirement;
+            points -= requirement;
             rank++;
-            JsonStorage.saveUser(id, balance, rank);
+            JsonStorage.saveUser(id, balance, rank, points);
 
             if (!member.isOwner()) {
                 member.modifyNickname(getBaseName(member) + " " + toRoman(rank)).queue();
             }
 
-            event.getChannel().sendMessage(member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! 💰 Remaining balance: " + balance)
+            event.getChannel().sendMessage(member.getEffectiveName() + " ranked up to " + toRoman(rank) + "! ⭐ Remaining points: " + points)
                     .queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
         }
     }
@@ -362,11 +408,12 @@ public class BankEvent extends ListenerAdapter {
         long id = member.getIdLong();
         int balance = JsonStorage.getBalance(id);
         int rank = JsonStorage.getRank(id);
+        int points = JsonStorage.getPoints(id);
 
-        while (balance < 0 && rank > 1) {
+        while (points < 0 && rank > 1) {
             rank--;
-            balance += rank * 1000; // restore balance for previous rank
-            JsonStorage.saveUser(id, balance, rank);
+            points += rank * 1000; // restore points for previous rank
+            JsonStorage.saveUser(id, balance, rank, points);
 
             if (!member.isOwner()) {
                 member.modifyNickname(getBaseName(member) + " " + toRoman(rank)).queue();
@@ -375,6 +422,9 @@ public class BankEvent extends ListenerAdapter {
             event.getChannel().sendMessage(member.getEffectiveName() + " ranked down to " + toRoman(rank))
                     .queue(msg -> msg.delete().queueAfter(5, TimeUnit.SECONDS));
         }
+        // Clamp points so they never stay negative at rank 1
+        int newPoints = points < 0 ? 0 : points;
+        JsonStorage.saveUser(id, balance, rank, newPoints);
     }
 
     private String toRoman(int num) {
