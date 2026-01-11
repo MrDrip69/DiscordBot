@@ -54,42 +54,23 @@ public class JsonStorage {
     public static int getRank(long userId) {
         return getInt(userId, "rank", 1);
     }
+    
     public static void addBalance(long userId, int amount) {
         if (connection == null) return;
-
-        String sql = """
-        INSERT INTO users (id, balance, rank, points)
-        VALUES (?, ?, 1, 0)
-        ON CONFLICT (id)
-        DO UPDATE SET balance = users.balance + EXCLUDED.balance;
-    """;
-
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ps.setInt(2, amount);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        int balance = getBalance(userId) + amount;
+        int rank = getRank(userId);
+        int points = getPoints(userId);
+        saveUser(userId, balance, rank, points);
     }
+
     public static void addPoints(long userId, int amount) {
         if (connection == null) return;
-
-        String sql = """
-        INSERT INTO users (id, balance, rank, points)
-        VALUES (?, 0, 1, ?)
-        ON CONFLICT (id)
-        DO UPDATE SET points = users.points + EXCLUDED.points;
-    """;
-
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ps.setInt(2, amount);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        int balance = getBalance(userId);
+        int rank = getRank(userId);
+        int points = getPoints(userId) + amount;
+        saveUser(userId, balance, rank, points);
     }
+
 
     // Generic helper
     private static int getInt(long userId, String column, int def) {
